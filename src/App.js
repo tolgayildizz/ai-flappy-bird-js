@@ -20,12 +20,12 @@ class Pipe {
     this.width = PIPE_WIDTH;
     //Math random (0,1)
     //Uzunluk hesaplanması
-    this.height = height ||  MIN_PIPE_HEIGHT +  Math.random() * (HEIGHT - space - MIN_PIPE_HEIGHT * 2);
+    this.height = height || MIN_PIPE_HEIGHT + Math.random() * (HEIGHT - space - MIN_PIPE_HEIGHT * 2);
   }
 
   //Yeni bir pipe çizmek için gerekli fonksiyon
-  draw() {  
- 
+  draw() {
+
     //Rect rengi
     this.ctx.fillStyle = "#000";
 
@@ -42,35 +42,38 @@ class Pipe {
 
 
 class App extends Component {
-  
+
   constructor(props) {
     super(props);
     //Canvas referansının oluşturulması
     this.canvasRef = React.createRef();
     //Frame sayacı değişkeni
     this.frameCount = 0;
+
+    //Kuşun geçeceği aralık
+    this.space = 80
   }
 
   componentDidMount() {
-    //Canvasın seçilmesi
-    const ctx = this.canvasRef.current.getContext("2d");
-    //Kuşun geçiş aralığı
-    const space = 80;
-    //İlk pipe 'ın oluşturulması
-    const firstPipe = new Pipe(ctx, null, space);
-    //İkinci Pipe'ın uzunluğunun hesaplanması
-    const secondPipeHeight = HEIGHT - firstPipe.height - space;
-    //İkinci Pipe'ın oluşturulması
-    const secondPipe = new Pipe(ctx, secondPipeHeight, space)
     //Pipes dizisinin oluşturulması
-    this.pipes = [
-      firstPipe,
-      secondPipe
-    ];
+    this.pipes = this.generatePipes();
     //Saniyede 60 FPS ile oyun döngüsünün yenilenmesi
     setInterval(this.gameLopp, 1000 / 60)
   }
-  
+
+  //Pipe oluşturmak için gerekli fonksiyon 
+  generatePipes = () => {
+    //Canvasın seçilmesi
+    const ctx = this.canvasRef.current.getContext("2d");
+    //İlk pipe 'ın oluşturulması
+    const firstPipe = new Pipe(ctx, null, this.space);
+    //İkinci Pipe'ın uzunluğunun hesaplanması
+    const secondPipeHeight = HEIGHT - firstPipe.height - this.space;
+    //İkinci Pipe'ın oluşturulması
+    const secondPipe = new Pipe(ctx, secondPipeHeight, this.space);
+    return [firstPipe, secondPipe]
+  }
+
   //Oyun döngüsünün kurulması
   gameLopp = () => {
     this.update()
@@ -84,21 +87,22 @@ class App extends Component {
 
   update = () => {
     this.frameCount = this.frameCount + 1;
-    if(this.frameCount % 30 == 0) {
-
+    if (this.frameCount % 30 === 0) {
+      const pipes = this.generatePipes();
+      this.pipes.push(...pipes)
     }
   }
 
-  
+
   render() {
     return (
       <div className="App">
         <canvas
           ref={this.canvasRef}
-          id="canvas" 
-          width={WIDTH} 
-          height={HEIGHT} 
-          style={{marginTop:"24px",border:"1px solid #000000"}}
+          id="canvas"
+          width={WIDTH}
+          height={HEIGHT}
+          style={{ marginTop: "24px", border: "1px solid #000000" }}
         >
           Your browser does not support the HTML5 canvas tag.
         </canvas>
