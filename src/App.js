@@ -177,6 +177,9 @@ class App extends Component {
     
       //Borular dizisine ekle
       this.pipes.push(...pipes)
+
+      //Oyun bittimi kontrolü 
+      this.isGameOver();
     }
     
     //Boruların pozisyonunun güncellenmesi
@@ -193,13 +196,26 @@ class App extends Component {
 
   isGameOver = () => {
     //Çarpmaları bulmak
-    this.birds.forEach(bird => {
-      this.pipes.forEach(pipe => {
-        if(true) {
+    this.birds.forEach((bird) => {
+      this.pipes.forEach((pipe) => {
+        //Borunun Sol Üst Kısmı
+        const pipeTopLeft = {x: pipe.x, y: pipe.y};
+        //Borunun Sağ Üst Kısmı (x + boru uzunluğu)
+        const pipeTopRight = {x: pipe.x + pipe.width, y: pipe.y};
+        //Borunun Sol Alt Kısmı
+        const pipeBottomLeft = {x: pipe.x, y: pipe.y + pipe.height };
+        //Borunun Sağ Alt Kısmı
+        const pipeBottomRight = {x: pipe.x + pipe.width, y: pipe.y + pipe.height };
+        if(bird.x > pipeTopLeft.x && bird.x < pipeTopRight.x
+          && bird.y > pipeTopLeft.y && bird.y < pipeBottomLeft.y) {
+          console.log("Game Over")
           return true;
         }
+        
       })
     })
+
+    return false;
   }
 
   render() {
