@@ -4,8 +4,54 @@ import React, { Component } from 'react'
 
 const HEIGHT = 500;
 const WIDTH = 800;
-const PIPE_WIDTH = 50;
+const PIPE_WIDTH = 80;
 const MIN_PIPE_HEIGHT = 40;
+const FPS = 120;
+
+class Bird {
+  constructor(ctx, height, space) {
+    //Canvasın alınması
+    this.ctx = ctx;
+    //X koordinatı
+    this.x = 150;
+    //Y Koordinatı
+    this.y = 150;
+    //Yerçekimi
+    this.gravity = 0;
+    //İvme
+    this.velocity = 0.1;
+  }
+
+  //Yeni bir kuş çizmek için gerekli fonksiyon
+  draw() {
+
+    //Kuş rengi
+    this.ctx.fillStyle = "red";
+    //Yeni bir path başlatma
+    this.ctx.beginPath();
+    //Daire çizimi
+    this.ctx.arc(this.x, this.y, 10, 0, 2 * Math.PI);
+    //daire içinin doldurulması
+    this.ctx.fill();
+  }
+
+  update() {
+    //Yer çekimini her frame de ivmeyle arttırdık
+    this.gravity += this.velocity;
+    //Maksimum gravity 4 olsun dedik
+    this.gravity = Math.min(4, this.gravity);
+    //Yer çekimini y eksenine ekledik
+    this.y += this.gravity;
+  }
+
+  jump = () => {
+    //Zıplandığında uygulanacak kuvvet
+    this.gravity = -3;
+  }
+
+}
+
+
 
 //Pipe Sınıfı
 class Pipe {
@@ -13,11 +59,13 @@ class Pipe {
     //Canvasın alınması
     this.ctx = ctx;
     //X koordinatı
-    this.x = 50;
+    this.x = WIDTH;
     //Y Koordinatı
     this.y = height ? HEIGHT - height : 0;
     //Genişlik
     this.width = PIPE_WIDTH;
+    //Ölü borular
+    this.isDead = false;
     //Math random (0,1)
     //Uzunluk hesaplanması
     this.height = height || MIN_PIPE_HEIGHT + Math.random() * (HEIGHT - space - MIN_PIPE_HEIGHT * 2);
@@ -36,8 +84,12 @@ class Pipe {
   }
 
   update() {
-
+    this.x -= 1;
+    if( (this.x + PIPE_WIDTH) < 0 ) {
+      this.isDead = true;
+    }
   }
+
 }
 
 
@@ -51,20 +103,39 @@ class App extends Component {
     this.frameCount = 0;
 
     //Kuşun geçeceği aralık
-    this.space = 80
+    this.space = 120;
+
+    //Borular 
+    this.pipes = [];
+    //Eğitilecek kuşlar
+    this.birds = [];
   }
 
   componentDidMount() {
+    //Kullanıcının space e basması
+    document.addEventListener('keydown', this.onkeydown);
+    //Context oluşturulması
+    const ctx = this.getCtx();
     //Pipes dizisinin oluşturulması
     this.pipes = this.generatePipes();
+    //Kuş oluşturma
+    this.birds = [new Bird(ctx)];
     //Saniyede 60 FPS ile oyun döngüsünün yenilenmesi
-    setInterval(this.gameLopp, 1000 / 60)
+    setInterval(this.gameLopp, 1000 / FPS)
+  }
+
+  onkeydown = (e) => {
+    //Space e basıldığında
+    console.log(e.code)
+    if(e.code === "Space") {
+      this.birds[0].jump();
+    }
   }
 
   //Pipe oluşturmak için gerekli fonksiyon 
   generatePipes = () => {
     //Canvasın seçilmesi
-    const ctx = this.canvasRef.current.getContext("2d");
+    const ctx = this.getCtx();
     //İlk pipe 'ın oluşturulması
     const firstPipe = new Pipe(ctx, null, this.space);
     //İkinci Pipe'ın uzunluğunun hesaplanması
@@ -80,19 +151,56 @@ class App extends Component {
     this.draw()
   }
 
+  getCtx = () => this.canvasRef.current.getContext("2d");
+
   //Pipeların oyun alanına çizilmesi
   draw = () => {
-    this.pipes.forEach(pipe => pipe.draw())
+    //Canvasın seçilmesi
+    const ctx = this.getCtx();
+    //Canvasın sıfırlanması
+    ctx.clearRect(0, 0, WIDTH, HEIGHT);
+    //Boruların çizilmesi
+    this.pipes.forEach(pipe => pipe.draw());
+    //Kuşların çizilmesi
+    this.birds.forEach(bird => bird.draw());
   }
 
   update = () => {
+    //Frame sayısının arttırılması
     this.frameCount = this.frameCount + 1;
-    if (this.frameCount % 30 === 0) {
+    
+    //3 saniye de bir yeni boru eklenmesi
+    if (this.frameCount % 320 === 0) {
+    
+      //Boru oluştur
       const pipes = this.generatePipes();
+    
+      //Borular dizisine ekle
       this.pipes.push(...pipes)
     }
+    
+    //Boruların pozisyonunun güncellenmesi
+    this.pipes.forEach(pipe => pipe.update());
+    
+    //Ölü boruların filtrelenmesi
+    this.pipes = this.pipes.filter(pipe => !pipe.isDead);
+    
+    //Kuşların pozisyonunun güncellenmesi
+    this.birds.forEach(bird => bird.update());
+
+    
   }
 
+  isGameOver = () => {
+    //Çarpmaları bulmak
+    this.birds.forEach(bird => {
+      this.pipes.forEach(pipe => {
+        if(true) {
+          return true;
+        }
+      })
+    })
+  }
 
   render() {
     return (
