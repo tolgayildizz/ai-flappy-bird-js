@@ -8,12 +8,14 @@ const PIPE_WIDTH = 80;
 const MIN_PIPE_HEIGHT = 40;
 const FPS = 120;
 
+const BIRD_START_X = 150;
+
 class Bird {
   constructor(ctx, height, space) {
     //Canvasın alınması
     this.ctx = ctx;
     //X koordinatı
-    this.x = 150;
+    this.x = BIRD_START_X;
     //Y Koordinatı
     this.y = 150;
     //Yerçekimi
@@ -85,7 +87,7 @@ class Pipe {
 
   update() {
     this.x -= 1;
-    if( (this.x + PIPE_WIDTH) < 0 ) {
+    if ((this.x + PIPE_WIDTH) < 0) {
       this.isDead = true;
     }
   }
@@ -121,13 +123,13 @@ class App extends Component {
     //Kuş oluşturma
     this.birds = [new Bird(ctx)];
     //Saniyede 60 FPS ile oyun döngüsünün yenilenmesi
-    setInterval(this.gameLopp, 1000 / FPS)
+    this.loop = setInterval(this.gameLopp, 1000 / FPS)
   }
 
   onkeydown = (e) => {
     //Space e basıldığında
     console.log(e.code)
-    if(e.code === "Space") {
+    if (e.code === "Space") {
       this.birds[0].jump();
     }
   }
@@ -168,54 +170,50 @@ class App extends Component {
   update = () => {
     //Frame sayısının arttırılması
     this.frameCount = this.frameCount + 1;
-    
+
     //3 saniye de bir yeni boru eklenmesi
     if (this.frameCount % 320 === 0) {
-    
+
       //Boru oluştur
       const pipes = this.generatePipes();
-    
-      //Borular dizisine ekle
-      this.pipes.push(...pipes)
 
-      //Oyun bittimi kontrolü 
-      this.isGameOver();
+      //Borular dizisine ekle
+      this.pipes.push(...pipes)  
     }
-    
+
+
     //Boruların pozisyonunun güncellenmesi
     this.pipes.forEach(pipe => pipe.update());
-    
+
     //Ölü boruların filtrelenmesi
     this.pipes = this.pipes.filter(pipe => !pipe.isDead);
-    
+
     //Kuşların pozisyonunun güncellenmesi
     this.birds.forEach(bird => bird.update());
 
-    
+    //Oyun bittimi kontrolü 
+    if (this.isGameOver()) {
+      alert("Game Over");
+      clearInterval(this.loop);
+    }
+
   }
 
   isGameOver = () => {
+    //Durum Değişkeni
+    let gameOver = false;
     //Çarpmaları bulmak
     this.birds.forEach((bird) => {
       this.pipes.forEach((pipe) => {
-        //Borunun Sol Üst Kısmı
-        const pipeTopLeft = {x: pipe.x, y: pipe.y};
-        //Borunun Sağ Üst Kısmı (x + boru uzunluğu)
-        const pipeTopRight = {x: pipe.x + pipe.width, y: pipe.y};
-        //Borunun Sol Alt Kısmı
-        const pipeBottomLeft = {x: pipe.x, y: pipe.y + pipe.height };
-        //Borunun Sağ Alt Kısmı
-        const pipeBottomRight = {x: pipe.x + pipe.width, y: pipe.y + pipe.height };
-        if(bird.x > pipeTopLeft.x && bird.x < pipeTopRight.x
-          && bird.y > pipeTopLeft.y && bird.y < pipeBottomLeft.y) {
-          console.log("Game Over")
-          return true;
+        if (bird.y <= 0 || bird.y >= HEIGHT || (bird.x >= pipe.x && bird.x <= pipe.x + pipe.width && bird.y >= pipe.y && bird.y <= pipe.y + pipe.height)) {
+          console.log("Game OVER");
+          gameOver = true;
         }
-        
+        console.log(bird.x, bird.y)
       })
     })
-
-    return false;
+    console.log("Oyun Devam")
+    return gameOver;
   }
 
   render() {
