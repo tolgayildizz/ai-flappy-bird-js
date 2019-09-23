@@ -1,8 +1,9 @@
 import React, { Component } from 'react'
 import { NeuralNetwork } from './neural/nn';
+import './App.css'
 
 //Constant (SABİTLER)
-const TOTAL_BIRDS = 100;
+const TOTAL_BIRDS = 500;
 const HEIGHT = 500;
 const WIDTH = 800;
 const PIPE_WIDTH = 80;
@@ -30,7 +31,7 @@ class Bird {
     //İvme
     this.velocity = 0.1;
     //Neural Network Kullanımı
-    this.brain = brain ? brain.copy() : new NeuralNetwork(8, 5, 1);
+    this.brain = brain ? brain.copy() : new NeuralNetwork(4, 4, 1);
   }
 
   //Yeni bir kuş çizmek için gerekli fonksiyon
@@ -46,7 +47,7 @@ class Bird {
     this.ctx.fill();
   }
 
-  update() {
+  update(spaceStartY, spaceEndY) {
     //Kuşun yaşının artması
     this.age += 1;
     //Yer çekimini her frame de ivmeyle arttırdık
@@ -56,7 +57,7 @@ class Bird {
     //Yer çekimini y eksenine ekledik
     this.y += this.gravity;
     //Kuşun düşünmesi
-    this.think(topPipe, bottomPipe);
+    this.think(spaceStartY, spaceEndY);
 
     //Kuşun düşmesinin engellenmesi
     if (this.y < 0) {
@@ -70,20 +71,15 @@ class Bird {
 
   //Tahmin fonksiyonu
 
-  think = (topPipe, bottomPipe) => {
+  think = (spaceStartY, spaceEndY) => {
     //Giriş değerleri
     const inputs = [
       //Kuşun kordinatları
       this.x / WIDTH,
       this.y / HEIGHT,
-      //Üst borunun Koordinatları
-      topPipe.x,
-      topPipe.y,
-      topPipe.y + topPipe.height,
-      //Alt borunun koordinatları
-     bottomPipe.x,
-     bottomPipe.y,
-     bottomPipe.y +bottomPipe.height,
+      //Boşluğun koordinatları
+      spaceStartY / HEIGHT,
+      spaceEndY / HEIGHT
     ];
     //0 ile 1 arasında değer döner //Output katmanı
     const output = this.brain.predict(inputs);
@@ -172,15 +168,20 @@ class App extends Component {
     this.birds = [];
     //Eğitim için kullanılacak ölü kuşları
     this.deadBirds = [];
+
+    //Oyun Hızı 
+    this.state = {
+      gameSpeed: FPS,
+    };
   }
 
   componentDidMount() {
     this.startGame();
   }
 
-  startGame = (birdBrain) => {
+  startGame = (bird) => {
     clearInterval(this.loop);
-    
+    this.frameCount = 0;
     const ctx = this.getCtx();
     ctx.clearRect(0,0, WIDTH, HEIGHT);
     //Kullanıcının space e basması
@@ -188,9 +189,9 @@ class App extends Component {
     //Pipes dizisinin oluşturulması
     this.pipes = this.generatePipes();
     //Kuş oluşturma
-    this.birds = this.generateBirds(birdBrain);
+    this.birds = this.generateBirds(bird);
     //Saniyede 60 FPS ile oyun döngüsünün yenilenmesi
-    this.loop = setInterval(this.gameLopp, 1000 / FPS)
+    this.loop = setInterval(this.gameLopp, 1000 / this.state.gameSpeed)
   }
 
   onkeydown = (e) => {
@@ -250,7 +251,7 @@ class App extends Component {
     this.frameCount = this.frameCount + 1;
 
     //3 saniye de bir yeni boru eklenmesi
-    if (this.frameCount % 320 === 0) {
+    if ((this.frameCount % 240) === 0) {
 
       //Boru oluştur
       const pipes = this.generatePipes();
@@ -267,7 +268,12 @@ class App extends Component {
     this.pipes = this.pipes.filter(pipe => !pipe.isDead);
 
     //Kuşların pozisyonunun güncellenmesi
-    this.birds.forEach(bird => bird.update());
+    this.birds.forEach(bird => {
+      //En yakın boruyu almak
+      const nextPipe = this.getNextPipe(bird);
+      const spaceStartY = nextPipe.y + nextPipe.height;
+      bird.update(spaceStartY, spaceStartY+this.space)
+    });
 
     //Ölü kuşların bulunması
     this.updateBirdDeadState();
@@ -302,6 +308,14 @@ class App extends Component {
 
   }
 
+  getNextPipe = (bird) => {
+    for (let index = 0; index < this.pipes.length; index++) {
+      if(this.pipes[index].x > bird.x) {
+        return this.pipes[index];
+      }
+    }
+  }
+
   updateBirdDeadState = () => {
     //Durum Değişkeni
     let gameOver = false;
@@ -331,6 +345,15 @@ class App extends Component {
         >
           Your browser does not support the HTML5 canvas tag.
         </canvas>
+        <div>
+          <input 
+            type="range" 
+            min="120" 
+            max="1000" 
+            value={this.state.gameSpeed}
+            onChange={(e) => {this.setState({gameSpeed: e.target.value}); this.startGame()}}
+          />
+        </div>
       </div>
     )
   }
