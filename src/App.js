@@ -3,17 +3,17 @@ import { NeuralNetwork } from './neural/nn';
 import './App.css'
 
 //Constant (SABİTLER)
-const TOTAL_BIRDS = 500;
+const TOTAL_BIRDS = 1000;
 const HEIGHT = 500;
 const WIDTH = 800;
-const PIPE_WIDTH = 80;
+const PIPE_WIDTH = 10;
 const MIN_PIPE_HEIGHT = 40;
 const FPS = 120;
 
 const BIRD_START_X = 150;
 
 class Bird {
-  constructor(ctx,brain) {
+  constructor(ctx, brain) {
     //Canvasın alınması
     this.ctx = ctx;
     //X koordinatı
@@ -31,7 +31,13 @@ class Bird {
     //İvme
     this.velocity = 0.1;
     //Neural Network Kullanımı
-    this.brain = brain ? brain.copy() : new NeuralNetwork(5, 10, 1);
+    if (brain) {
+      this.brain = brain.copy();
+      this.mutate();
+    }
+    else {
+      this.brain = new NeuralNetwork(5, 10, 1);
+    }
   }
 
   //Yeni bir kuş çizmek için gerekli fonksiyon
@@ -75,17 +81,17 @@ class Bird {
     //Giriş değerleri
     const inputs = [
       //Kuşun kordinatları
-      (this.x - pipeX) / WIDTH,
+      Math.abs((this.x - pipeX) / WIDTH),
       this.y / HEIGHT,
       //Boşluğun koordinatları
       spaceStartY / HEIGHT,
       spaceEndY / HEIGHT,
       //Yer çekimi
-      this.gravity / 10
+      this.gravity / 4,
     ];
     //0 ile 1 arasında değer döner //Output katmanı
     const output = this.brain.predict(inputs);
-    
+
     if (output[0] < 0.5) {
       this.jump();
     }
@@ -93,15 +99,15 @@ class Bird {
 
   //Kuş mutasyon fonksiyonu 
   mutate = () => {
-    //Kuşun beynini %10 oranında mutasyona uğrat (En güçlü kuş için)
     this.brain.mutate((x) => {
-      if (Math.random() < 0.1) {
+      if (Math.random() < 0.2) {
         const offset = Math.random();
         return x + offset;
       }
       return x;
     });
   }
+
 
   jump = () => {
     //Zıplandığında uygulanacak kuvvet
@@ -110,7 +116,7 @@ class Bird {
 
 }
 
-
+let counter = 0;
 
 //Pipe Sınıfı
 class Pipe {
@@ -160,7 +166,7 @@ class App extends Component {
     this.canvasRef = React.createRef();
     //Frame sayacı değişkeni
     this.frameCount = 0;
-
+    
     //Kuşun geçeceği aralık
     this.space = 120;
 
@@ -173,6 +179,7 @@ class App extends Component {
 
     //Oyun Hızı 
     this.state = {
+      shouldDraw: false,
       gameSpeed: FPS,
     };
   }
@@ -181,20 +188,31 @@ class App extends Component {
     this.startGame();
   }
 
-  startGame = (bird) => {
-    clearInterval(this.loop);
+  startGame = () => {
+    //Sayaç ekleme 
+    counter++;
+    console.log("Jenerasyon : ", counter)
+
+    if(counter > 0) {
+      this.setState({shouldDraw:true});
+    }
+
     this.frameCount = 0;
+    clearInterval(this.loop);
     const ctx = this.getCtx();
-    ctx.clearRect(0,0, WIDTH, HEIGHT);
+    ctx.clearRect(0, 0, WIDTH, HEIGHT);
     //Kullanıcının space e basması
     //document.addEventListener('keydown', this.onkeydown);
     //Pipes dizisinin oluşturulması
     this.pipes = this.generatePipes();
     //Kuş oluşturma
-    this.birds = this.generateBirds(bird);
+    this.birds = this.generateBirds();
+    //Ölü kuşların sıfırlanması
+    this.deadBirds = [];
     //Saniyede 60 FPS ile oyun döngüsünün yenilenmesi
     this.loop = setInterval(this.gameLopp, 1000 / this.state.gameSpeed)
   }
+
 
   onkeydown = (e) => {
     //Space e basıldığında
@@ -204,16 +222,16 @@ class App extends Component {
     }
   }
 
-  generateBirds = (bird) => {
+  generateBirds = () => {
     const birds = [];
-    //Context oluşturulması
     const ctx = this.getCtx();
-
-    for (let i = 0; i < TOTAL_BIRDS; i++) {
-      birds.push(new Bird(ctx, Math.random() < 0.8 ? bird : null));
+    for (let i = 0; i < TOTAL_BIRDS; i += 1) {
+      const brain = this.deadBirds.length && this.pickOne().brain;
+      const newBird = new Bird(ctx, brain);
+      birds.push(newBird);
     }
     return birds;
-  }
+  };
 
   //Pipe oluşturmak için gerekli fonksiyon 
   generatePipes = () => {
@@ -230,7 +248,15 @@ class App extends Component {
 
   //Oyun döngüsünün kurulması
   gameLopp = () => {
-    this.update()
+    if(this.state.shouldDraw) {
+      this.update()
+    }
+    else {
+      for (let i = 0; i <1000; i++) {
+        this.update();
+      }
+    }
+    
     this.draw()
   }
 
@@ -238,6 +264,12 @@ class App extends Component {
 
   //Pipeların oyun alanına çizilmesi
   draw = () => {
+
+    //Simülasyon da çizme
+    if(!this.state.shouldDraw) {
+      return;
+    } 
+
     //Canvasın seçilmesi
     const ctx = this.getCtx();
     //Canvasın sıfırlanması
@@ -253,7 +285,7 @@ class App extends Component {
     this.frameCount = this.frameCount + 1;
 
     //3 saniye de bir yeni boru eklenmesi
-    if ((this.frameCount % 240) === 0) {
+    if ((this.frameCount % 480) === 0) {
 
       //Boru oluştur
       const pipes = this.generatePipes();
@@ -274,17 +306,17 @@ class App extends Component {
       //En yakın boruyu almak
       const nextPipe = this.getNextPipe(bird);
       const spaceStartY = nextPipe.y + nextPipe.height;
-      bird.update(nextPipe.x, spaceStartY, spaceStartY+this.space)
+      bird.update(nextPipe.x, spaceStartY, spaceStartY + this.space)
     });
 
     //Ölü kuşların bulunması
     this.updateBirdDeadState();
-    
+
     //ölü Kuşların bir diziye alınması
     this.deadBirds.push(...this.birds.filter(bird => bird.isDead));
     //Ölü kuşların silinmesi
     this.birds = this.birds.filter(bird => !bird.isDead);
-    
+
     //Oyun bittimi kontrolü 
     // if (this.isGameOver()) {
     //   //alert("Game Over");
@@ -293,26 +325,38 @@ class App extends Component {
 
     //Yeni jenarasyon kuşları oluşturma
 
-    if(this.birds.length === 0) {
+    if (this.birds.length === 0) {
       let totalAge = 0;
       //Kümülatif yaşların toplanması
       this.deadBirds.forEach(deadBird => totalAge += deadBird.age);
       //Fitness oranı hesaplanması
       this.deadBirds.forEach(deadBird => deadBird.fitness = deadBird.age / totalAge)
-      //En güçlü kuşu array de ilk sıraya alma
-      this.deadBirds.sort((a, b) => a.fitness <= b.fitness)
-      //En güçlü kuşun seçimi
-      const strongest = this.deadBirds[0];
-      //En güçlü kuşu  mutasyona uğrat
-      strongest.mutate();
-      this.startGame(strongest.brain);
+      // //En güçlü kuşu array de ilk sıraya alma
+      // this.deadBirds.sort((a, b) => a.fitness >= b.fitness)
+      // //En güçlü kuşun seçimi
+      // const strongest = this.deadBirds[0];
+      // //En güçlü kuşu  mutasyona uğrat
+      // strongest.mutate();
+      this.startGame();
     }
 
   }
 
+  // olen kuslar arasindan bir tane kus sec
+  pickOne = () => {
+    let index = 0;
+    let r = Math.random();
+    while (r > 0) {
+      r -= this.deadBirds[index].fitness;
+      index += 1;
+    }
+    index -= 1;
+    return this.deadBirds[index];
+  }
+
   getNextPipe = (bird) => {
     for (let index = 0; index < this.pipes.length; index++) {
-      if(this.pipes[index].x > bird.x) {
+      if (this.pipes[index].x > bird.x) {
         return this.pipes[index];
       }
     }
@@ -348,12 +392,12 @@ class App extends Component {
           Your browser does not support the HTML5 canvas tag.
         </canvas>
         <div>
-          <input 
-            type="range" 
-            min="120" 
-            max="1000" 
+          <input
+            type="range"
+            min="120"
+            max="1000"
             value={this.state.gameSpeed}
-            onChange={(e) => {this.setState({gameSpeed: e.target.value}); this.startGame()}}
+            onChange={(e) => { this.setState({ gameSpeed: e.target.value }); this.startGame() }}
           />
         </div>
       </div>
