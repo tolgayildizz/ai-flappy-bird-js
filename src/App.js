@@ -31,7 +31,7 @@ class Bird {
     //İvme
     this.velocity = 0.1;
     //Neural Network Kullanımı
-    this.brain = brain ? brain.copy() : new NeuralNetwork(4, 4, 1);
+    this.brain = brain ? brain.copy() : new NeuralNetwork(5, 10, 1);
   }
 
   //Yeni bir kuş çizmek için gerekli fonksiyon
@@ -47,7 +47,7 @@ class Bird {
     this.ctx.fill();
   }
 
-  update(spaceStartY, spaceEndY) {
+  update(pipeX, spaceStartY, spaceEndY) {
     //Kuşun yaşının artması
     this.age += 1;
     //Yer çekimini her frame de ivmeyle arttırdık
@@ -57,7 +57,7 @@ class Bird {
     //Yer çekimini y eksenine ekledik
     this.y += this.gravity;
     //Kuşun düşünmesi
-    this.think(spaceStartY, spaceEndY);
+    this.think(pipeX, spaceStartY, spaceEndY);
 
     //Kuşun düşmesinin engellenmesi
     if (this.y < 0) {
@@ -71,15 +71,17 @@ class Bird {
 
   //Tahmin fonksiyonu
 
-  think = (spaceStartY, spaceEndY) => {
+  think = (pipeX, spaceStartY, spaceEndY) => {
     //Giriş değerleri
     const inputs = [
       //Kuşun kordinatları
-      this.x / WIDTH,
+      (this.x - pipeX) / WIDTH,
       this.y / HEIGHT,
       //Boşluğun koordinatları
       spaceStartY / HEIGHT,
-      spaceEndY / HEIGHT
+      spaceEndY / HEIGHT,
+      //Yer çekimi
+      this.gravity / 10
     ];
     //0 ile 1 arasında değer döner //Output katmanı
     const output = this.brain.predict(inputs);
@@ -202,13 +204,13 @@ class App extends Component {
     }
   }
 
-  generateBirds = (brain) => {
+  generateBirds = (bird) => {
     const birds = [];
     //Context oluşturulması
     const ctx = this.getCtx();
 
     for (let i = 0; i < TOTAL_BIRDS; i++) {
-      birds.push(new Bird(ctx, brain));
+      birds.push(new Bird(ctx, Math.random() < 0.8 ? bird : null));
     }
     return birds;
   }
@@ -272,7 +274,7 @@ class App extends Component {
       //En yakın boruyu almak
       const nextPipe = this.getNextPipe(bird);
       const spaceStartY = nextPipe.y + nextPipe.height;
-      bird.update(spaceStartY, spaceStartY+this.space)
+      bird.update(nextPipe.x, spaceStartY, spaceStartY+this.space)
     });
 
     //Ölü kuşların bulunması
