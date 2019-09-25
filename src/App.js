@@ -6,11 +6,13 @@ import './App.css'
 const TOTAL_BIRDS = 1000;
 const HEIGHT = 500;
 const WIDTH = 800;
-const PIPE_WIDTH = 10;
+const PIPE_WIDTH = 20;
 const MIN_PIPE_HEIGHT = 40;
 const FPS = 120;
-
+const SPEED_MODE_FPS = 480;
 const BIRD_START_X = 150;
+
+
 
 class Bird {
   constructor(ctx, brain) {
@@ -36,7 +38,7 @@ class Bird {
       this.mutate();
     }
     else {
-      this.brain = new NeuralNetwork(5, 10, 1);
+      this.brain = new NeuralNetwork(6, 10, 1);
     }
   }
 
@@ -81,17 +83,19 @@ class Bird {
     //Giriş değerleri
     const inputs = [
       //Kuşun kordinatları
-      Math.abs((this.x - pipeX) / WIDTH),
-      this.y / HEIGHT,
+      Math.abs((this.x - pipeX) / WIDTH).toFixed(2),
+      (this.y / HEIGHT).toFixed(2),
       //Boşluğun koordinatları
-      spaceStartY / HEIGHT,
-      spaceEndY / HEIGHT,
+      (spaceStartY / HEIGHT).toFixed(2),
+      (spaceEndY / HEIGHT).toFixed(2),
       //Yer çekimi
-      this.gravity / 4,
+      (this.gravity / 4).toFixed(2),
+      //Genişlik
+      ((this.x + PIPE_WIDTH) / WIDTH).toFixed(2),
     ];
     //0 ile 1 arasında değer döner //Output katmanı
     const output = this.brain.predict(inputs);
-
+    //console.log(inputs)
     if (output[0] < 0.5) {
       this.jump();
     }
@@ -208,7 +212,7 @@ class App extends Component {
     //Kuş oluşturma
     this.birds = this.generateBirds();
     //Ölü kuşların sıfırlanması
-    this.deadBirds = [];
+    //this.deadBirds = [];
     //Saniyede 60 FPS ile oyun döngüsünün yenilenmesi
     this.loop = setInterval(this.gameLopp, 1000 / this.state.gameSpeed)
   }
@@ -226,6 +230,7 @@ class App extends Component {
     const birds = [];
     const ctx = this.getCtx();
     for (let i = 0; i < TOTAL_BIRDS; i += 1) {
+      //console.log(this.deadBirds)
       const brain = this.deadBirds.length && this.pickOne().brain;
       const newBird = new Bird(ctx, brain);
       birds.push(newBird);
@@ -285,7 +290,7 @@ class App extends Component {
     this.frameCount = this.frameCount + 1;
 
     //3 saniye de bir yeni boru eklenmesi
-    if ((this.frameCount % 480) === 0) {
+    if ((this.frameCount % 300) === 0) {
 
       //Boru oluştur
       const pipes = this.generatePipes();
@@ -330,7 +335,7 @@ class App extends Component {
       //Kümülatif yaşların toplanması
       this.deadBirds.forEach(deadBird => totalAge += deadBird.age);
       //Fitness oranı hesaplanması
-      this.deadBirds.forEach(deadBird => deadBird.fitness = deadBird.age / totalAge)
+      this.deadBirds.forEach((deadBird) => { deadBird.fitness = deadBird.age / totalAge;});
       // //En güçlü kuşu array de ilk sıraya alma
       // this.deadBirds.sort((a, b) => a.fitness >= b.fitness)
       // //En güçlü kuşun seçimi
@@ -393,13 +398,14 @@ class App extends Component {
         </canvas>
         <div>
           <input
-            type="range"
-            min="120"
-            max="1000"
-            value={this.state.gameSpeed}
-            onChange={(e) => { this.setState({ gameSpeed: e.target.value }); this.startGame() }}
+            type="button"
+            value={"Hızlandır"}
+            onClick={() => { this.setState({ gameSpeed: SPEED_MODE_FPS }); this.startGame() }}
           />
         </div>
+        {
+          this.state.gameSpeed
+        }
       </div>
     )
   }
